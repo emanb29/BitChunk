@@ -12,8 +12,8 @@ object BitChunk {
     else
       (for {
         chunkStart <- 0 to bs.max by n // we count up from the 0th bit to the nth, and chunked based on that
-        chunkEnd = chunkStart + n
-        bitsInChunk = bs.range(chunkStart, chunkEnd)
+        chunkEnd            = chunkStart + n
+        bitsInChunk         = bs.range(chunkStart, chunkEnd)
         bitsAdjustedToStart = bitsInChunk.map(_ - chunkStart)
       } yield BitChunk(n, bitsAdjustedToStart)).reverse // results should be big-endian
 
@@ -36,8 +36,8 @@ object BitChunk {
   def apply(bi: BigInt): BitChunk = fromHexString(bi.toByteArray.dropWhile(_ == 0).toSeq.asHexBytes)
 
   def fromHexString(hexStr: String): BitChunk = {
-    val bytesStr = if (hexStr.substring(0, 2) == "0x") hexStr.drop(2) else hexStr
-    val bytes = Hex.decodeHex(bytesStr).toSeq
+    val bytesStr  = if (hexStr.substring(0, 2) == "0x") hexStr.drop(2) else hexStr
+    val bytes     = Hex.decodeHex(bytesStr).toSeq
     val meatyBits = bytes.map(BitChunk.apply).reduce(_ ++ _)
     val leftPadBits =
       if (meatyBits.n < bytes.length * 8) BitChunk.zeros(bytes.length * 8 - meatyBits.n)
@@ -56,14 +56,14 @@ object BitChunk {
 case class BitChunk(n: Int, bs: BitSet) {
   require(
     bs.isEmpty || bs.max < n,
-    s"A BitChunk should be constructed with the `safe` method when the max bit may exceed the n-bound. n was $n; bs was $bs"
+    s"A BitChunk should be constructed with the `safe` method when the max bit may exceed the n-bound. n was $n; bs was $bs",
   )
 
   def apply(position: Int): Boolean = bs.contains(position)
 
   def grouped(newN: Int): Seq[BitChunk] = {
     require(newN != 0, "Cannot coerce into any number of 0-length chunks")
-    val meatyBits = BitChunk.safe(newN)(bs)
+    val meatyBits       = BitChunk.safe(newN)(bs)
     val remainingChunks = Math.ceil((n - newN * meatyBits.length).toDouble / newN).toInt
     List.fill(remainingChunks)(BitChunk.zeros(newN)) ++ meatyBits
   }
@@ -115,7 +115,8 @@ case class BitChunk(n: Int, bs: BitSet) {
 
   def takeRight(bits: Int): BitChunk = drop(n - bits)
 
-  def toUnsignedBigInt(): BigInt = BigInt(Array(0x00.toByte) ++ toBytes().toArray) // prefix with 0s so generated BigInt is positive
+  def toUnsignedBigInt()
+    : BigInt             = BigInt(Array(0x00.toByte) ++ toBytes().toArray) // prefix with 0s so generated BigInt is positive
   def toBigInt(): BigInt = BigInt(toBytes().toArray)
 
   def asBinaryString: String =
