@@ -116,7 +116,7 @@ case class BitChunk(n: Int, bs: BitSet) {
   def takeRight(bits: Int): BitChunk = drop(n - bits)
 
   def toUnsignedBigInt()
-    : BigInt             = BigInt(Array(0x00.toByte) ++ toBytes().toArray) // prefix with 0s so generated BigInt is positive
+    : BigInt             = BigInt((Array(0x00.toByte) ++ toBytes()).toArray) // prefix with 0s so generated BigInt is positive
   def toBigInt(): BigInt = BigInt(toBytes().toArray)
 
   def asBinaryString: String =
