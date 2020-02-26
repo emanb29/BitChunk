@@ -5,6 +5,9 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.1"
 ThisBuild / name := "BitChunk"
 
+ThisBuild / githubOwner := "emanb29"
+ThisBuild / githubRepository := "BitChunk"
+
 val apacheCommonsV = "1.13"
 
 lazy val commonSettings = List(
