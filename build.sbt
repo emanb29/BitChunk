@@ -1,7 +1,7 @@
 lazy val supportedScalaVersions = List("2.13.1", "2.12.10")
 
 ThisBuild / organization := "me.ethanbell"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "1.0.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.1"
 ThisBuild / name := "BitChunk"
 

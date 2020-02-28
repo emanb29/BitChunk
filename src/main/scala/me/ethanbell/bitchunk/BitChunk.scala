@@ -63,12 +63,37 @@ case class BitChunk(n: Int, bs: BitSet) {
 
   def grouped(newN: Int): Seq[BitChunk] = {
     require(newN != 0, "Cannot coerce into any number of 0-length chunks")
-    val meatyBits       = BitChunk.safe(newN)(bs)
+    if (n % newN == 0) BitChunk.safe(newN)(bs)
+    else {
+      BitChunk
+        .safe(1)(bs)
+        .grouped(newN)
+        .map(_.reduce(_ ++ _))
+        .toSeq
+    }
+  }
+  def groupedLeftPadded(newN: Int): Seq[BitChunk] = {
+    require(newN != 0, "Cannot coerce into any number of 0-length chunks")
+    val meatyBits = BitChunk.safe(newN)(bs)
+    // TODO this "ceil" is somewhat opaque as compared to the if/else above, even if it is more succinct
     val remainingChunks = Math.ceil((n - newN * meatyBits.length).toDouble / newN).toInt
     List.fill(remainingChunks)(BitChunk.zeros(newN)) ++ meatyBits
   }
+  def groupedDroppingLeft(newN: Int): Seq[BitChunk] = {
+    require(newN != 0, "Cannot coerce into any number of 0-length chunks")
+    if (n % newN == 0) BitChunk.safe(newN)(bs)
+    else {
+      val bitsToDrop = newN - n % newN
+      val padded     = groupedLeftPadded(newN)
+      padded.head
+        .groupedLeftPadded(1)          // split into single-bits
+        .drop(bitsToDrop)              // drop however many padding bits were added by "grouped"
+        .reduce(_ ++ _) +: padded.tail // recombine
+    }
+  }
+  def groupedDroppingRight(newN: Int): Seq[BitChunk] = grouped(newN)
 
-  def toBytes(): Seq[Byte] = grouped(8).map { (bc: BitChunk) =>
+  def toBytes(): Seq[Byte] = groupedLeftPadded(8).map { (bc: BitChunk) =>
     bc.bs.toBitMask.head.toByte
   }
 
@@ -109,9 +134,9 @@ case class BitChunk(n: Int, bs: BitSet) {
     x
   }
 
-  def take(bits: Int): BitChunk = grouped(bits).head
+  def take(bits: Int): BitChunk = groupedLeftPadded(bits).head
 
-  def drop(bits: Int): BitChunk = grouped(bits).drop(1).reduce(_ ++ _).take(n - bits)
+  def drop(bits: Int): BitChunk = groupedLeftPadded(bits).drop(1).reduce(_ ++ _).take(n - bits)
 
   def takeRight(bits: Int): BitChunk = drop(n - bits)
 
