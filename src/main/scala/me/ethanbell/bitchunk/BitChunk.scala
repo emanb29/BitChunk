@@ -134,9 +134,9 @@ case class BitChunk(n: Int, bs: BitSet) {
     x
   }
 
-  def take(bits: Int): BitChunk = groupedLeftPadded(bits).head
+  def take(bits: Int): BitChunk = grouped(bits).head
 
-  def drop(bits: Int): BitChunk = groupedLeftPadded(bits).drop(1).reduce(_ ++ _).take(n - bits)
+  def drop(bits: Int): BitChunk = grouped(1).drop(bits).reduce(_ ++ _)
 
   def takeRight(bits: Int): BitChunk = drop(n - bits)
 
