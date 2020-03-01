@@ -6,18 +6,30 @@ import Util._
 import org.apache.commons.codec.binary.Hex
 
 object BitChunk {
-  // def apply(bs: BitSet): BitChunk = BitChunk(bs.max, bs)
-  def safe(n: Int)(bs: BitSet): Seq[BitChunk] =
-    if (bs.isEmpty) Seq(BitChunk.zeros(n))
-    else
-      (for {
-        chunkStart <- 0 to bs.max by n // we count up from the 0th bit to the nth, and chunked based on that
-        chunkEnd            = chunkStart + n
-        bitsInChunk         = bs.range(chunkStart, chunkEnd)
-        bitsAdjustedToStart = bitsInChunk.map(_ - chunkStart)
-      } yield BitChunk(n, bitsAdjustedToStart)).reverse // results should be big-endian
+
+  /**
+   * Safely construct at least one BitChunk with length exactly n (left-padded with zeros)
+   * @param n
+   * @param bs
+   * @return
+   */
+  def safe(n: Int)(bs: BitSet): Seq[BitChunk] = {
+    val meatyBits =
+      if (bs.isEmpty) Seq(BitChunk.zeros(n))
+      else
+        (for {
+          chunkStart <- 0 to bs.max by n // we count up from the 0th bit to the nth, and chunked based on that
+          chunkEnd            = chunkStart + n
+          bitsInChunk         = bs.range(chunkStart, chunkEnd)
+          bitsAdjustedToStart = bitsInChunk.map(_ - chunkStart)
+        } yield BitChunk(n, bitsAdjustedToStart)).reverse // results should be big-endian
+    val bitsToFill = n - meatyBits.head.n
+    (BitChunk.zeros(bitsToFill) ++ meatyBits.head) +: meatyBits.tail
+  }
 
   // TODO all these apply methods need to add 2^n to any negative values
+  def apply(b: Boolean): BitChunk = if (b) BitChunk.ones(1) else BitChunk.zeros(1)
+
   def apply(b: Byte): BitChunk = BitChunk(8, BitMask(Array(unsignedAsLong(b.toLong, 8))))
 
   def apply(c: Char): BitChunk = BitChunk(c.toByte)
@@ -47,7 +59,8 @@ object BitChunk {
 
   val empty = zeros(0)
 
-  def zeros(n: Int) = BitChunk(n, BitSet.empty)
+  def zeros(n: Int): BitChunk = BitChunk(n, BitSet.empty)
+  def ones(n: Int): BitChunk  = BitChunk(n, BitSet((0 until n): _*))
 }
 
 /**
@@ -56,22 +69,30 @@ object BitChunk {
 case class BitChunk(n: Int, bs: BitSet) {
   require(
     bs.isEmpty || bs.max < n,
-    s"A BitChunk should be constructed with the `safe` method when the max bit may exceed the n-bound. n was $n; bs was $bs",
+    s"A BitChunk should be constructed with the `safe` method when the max bit may exceed the n-bound. n was $n; bs was $bs"
   )
 
   def apply(position: Int): Boolean = bs.contains(position)
 
+  /**
+   * @example abcabc.grouped(16) == [abca][bc]
+   * @example 012012.grouped(16) == [0120][12]
+   * @param newN
+   * @return
+   */
   def grouped(newN: Int): Seq[BitChunk] = {
     require(newN != 0, "Cannot coerce into any number of 0-length chunks")
-    if (n % newN == 0) BitChunk.safe(newN)(bs)
-    else {
-      BitChunk
-        .safe(1)(bs)
-        .grouped(newN)
-        .map(_.reduce(_ ++ _))
-        .toSeq
-    }
+    asBits.grouped(newN).map(_.reduce(_ ++ _)).toSeq
   }
+  def asBits: Seq[BitChunk] = (0 until n).map(apply).map(BitChunk.apply).reverse
+
+  /**
+   * Like "grouped", but if the new length doesn't evenly divide, left-pad zeros.
+   * @example abcabc.groupedLeftPadded(16) == [00ab][cabc]
+   * @example 012012.groupedLeftPadded(16) == [0001][2012]
+   * @param newN
+   * @return
+   */
   def groupedLeftPadded(newN: Int): Seq[BitChunk] = {
     require(newN != 0, "Cannot coerce into any number of 0-length chunks")
     val meatyBits = BitChunk.safe(newN)(bs)
@@ -79,9 +100,17 @@ case class BitChunk(n: Int, bs: BitSet) {
     val remainingChunks = Math.ceil((n - newN * meatyBits.length).toDouble / newN).toInt
     List.fill(remainingChunks)(BitChunk.zeros(newN)) ++ meatyBits
   }
+
+  /**
+   * Like "grouped", but shorten the first BitChunk instead of the last one if the new length doesn't evenly divide
+   * @example abcabc.groupedDroppingLeft(16) == [ab][cabc]
+   * @example 012012.groupedDroppingLeft(16) == [01][2012]
+   * @param newN
+   * @return
+   */
   def groupedDroppingLeft(newN: Int): Seq[BitChunk] = {
     require(newN != 0, "Cannot coerce into any number of 0-length chunks")
-    if (n % newN == 0) BitChunk.safe(newN)(bs)
+    if (n % newN == 0) grouped(newN)
     else {
       val bitsToDrop = newN - n % newN
       val padded     = groupedLeftPadded(newN)
