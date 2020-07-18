@@ -8,7 +8,7 @@ ThisBuild / name := "BitChunk"
 ThisBuild / githubOwner := "emanb29"
 ThisBuild / githubRepository := "BitChunk"
 
-val apacheCommonsV      = "1.13"
+val apacheCommonsV      = "1.14"
 val scalaTestV          = "3.1.1"
 val scalaTestPlusCheckV = "3.1.0.0-RC2"
 val scalaCheckV         = "1.14.1"
